@@ -1,6 +1,6 @@
 # testing special comment on first line
 -- $Id: testes/main.lua $
--- See Copyright Notice in file lua.h
+-- See Copyright Notice in file all.lua
 
 -- most (all?) tests here assume a reasonable "Unix-like" shell
 if _port then return end
@@ -78,9 +78,6 @@ end
 
 RUN('lua -v')
 
-RUN('lua -v > %s', out)
-local release = string.match(getoutput(), "Lua (%d+%.%d+%.%d+)")
-
 print(string.format("(temporary program file used in these tests: %s)", prog))
 
 -- running stdin as a file
@@ -93,7 +90,7 @@ prepfile[[
 1, a
 )
 ]]
-RUN('lua - -- < %s > %s', prog, out)
+RUN('lua - < %s > %s', prog, out)
 checkout("1\tnil\n")
 
 RUN('echo "print(10)\nprint(2)\n" | lua > %s', out)
@@ -136,11 +133,11 @@ checkout("-h\n")
 prepfile("print(package.path)")
 
 -- test LUA_PATH
-RUN('env LUA_INIT= LUA_PATH=x lua -- %s > %s', prog, out)
+RUN('env LUA_INIT= LUA_PATH=x lua %s > %s', prog, out)
 checkout("x\n")
 
 -- test LUA_PATH_version
-RUN('env LUA_INIT= LUA_PATH_5_5=y LUA_PATH=x lua %s > %s', prog, out)
+RUN('env LUA_INIT= LUA_PATH_5_4=y LUA_PATH=x lua %s > %s', prog, out)
 checkout("y\n")
 
 -- test LUA_CPATH
@@ -149,7 +146,7 @@ RUN('env LUA_INIT= LUA_CPATH=xuxu lua %s > %s', prog, out)
 checkout("xuxu\n")
 
 -- test LUA_CPATH_version
-RUN('env LUA_INIT= LUA_CPATH_5_5=yacc LUA_CPATH=x lua %s > %s', prog, out)
+RUN('env LUA_INIT= LUA_CPATH_5_4=yacc LUA_CPATH=x lua %s > %s', prog, out)
 checkout("yacc\n")
 
 -- test LUA_INIT (and its access to 'arg' table)
@@ -159,7 +156,7 @@ checkout("3.2\n")
 
 -- test LUA_INIT_version
 prepfile("print(X)")
-RUN('env LUA_INIT_5_5="X=10" LUA_INIT="X=3" lua %s > %s', prog, out)
+RUN('env LUA_INIT_5_4="X=10" LUA_INIT="X=3" lua %s > %s', prog, out)
 checkout("10\n")
 
 -- test LUA_INIT for files
@@ -170,9 +167,7 @@ checkout("10\n11\n")
 -- test errors in LUA_INIT
 NoRun('LUA_INIT:1: msg', 'env LUA_INIT="error(\'msg\')" lua')
 
-
-print("testing option '-E'")
-
+-- test option '-E'
 local defaultpath, defaultCpath
 
 do
@@ -195,24 +190,6 @@ assert(not string.find(defaultpath, "xxx") and
        string.find(defaultpath, "lua") and
        not string.find(defaultCpath, "xxx") and
        string.find(defaultCpath, "lua"))
-
-
--- (LUA_READLINELIB was introduced in 5.5.1)
-if release >= "5.5.1" then
-  -- OBS: this test is not valid when Lua is compiled with LUA_USE_READLINE
-  print"testing readline library name"
-  -- should generate a warning when trying to load inexistent library "xuxu"
-  local env = [[LUA_READLINELIB=xuxu LUA_INIT="warn('@allow')"]]
-  local code = 'echo " " | env %s lua %s -W -i >%s 2>&1'
-  RUN(code, env, "", out)   -- run code with no extra options
-  if(not string.find(getoutput(),
-            "warning: unable to load readline library 'xuxu'")) then
-    error("Is Lua compiled with option LUA_USE_READLINE?")
-  end
-  RUN(code, env, "-E", out)   -- run again with option -E
-  -- no warning when LUA_READLINELIB is to be ignored
-  assert(not string.find(getoutput(), "warning"))
-end
 
 
 -- test replacement of ';;' to default path
@@ -249,7 +226,7 @@ RUN("lua -l 'str=string' '-lm=math' -e 'print(m.sin(0))' %s > %s", prog, out)
 checkout("0.0\nALO ALO\t20\n")
 
 
--- test module names with version suffix ("libs/lib2-v2")
+-- test module names with version sufix ("libs/lib2-v2")
 RUN("env LUA_CPATH='./libs/?.so' lua -l lib2-v2 -e 'print(lib2.id())' > %s",
     out)
 checkout("true\n")
@@ -286,15 +263,6 @@ assert(string.find(getoutput(), "error calling 'print'"))
 RUN('echo "io.stderr:write(1000)\ncont" | lua -e "require\'debug\'.debug()" 2> %s', out)
 checkout("lua_debug> 1000lua_debug> ")
 
-do  -- test warning for locals
-  RUN('echo "  		local x" | lua -i > %s 2>&1', out)
-  assert(string.find(getoutput(), "warning: "))
-
-  RUN('echo "local1 = 10\nlocal1 + 3" | lua -i > %s 2>&1', out)
-  local t = getoutput()
-  assert(not string.find(t, "warning"))
-  assert(string.find(t, "13"))
-end
 
 print("testing warnings")
 
@@ -333,11 +301,8 @@ checkprogout("ZYX)\nXYZ)\n")
 -- bug since 5.2: finalizer called when closing a state could
 -- subvert finalization order
 prepfile[[
--- ensure tables will be collected only at the end of the program
-collectgarbage"stop"
-
+-- should be called last
 print("creating 1")
--- this finalizer should be called last
 setmetatable({}, {__gc = function () print(1) end})
 
 print("creating 2")
@@ -347,7 +312,7 @@ setmetatable({}, {__gc = function ()
   -- this finalizer should not be called, as object will be
   -- created after 'lua_close' has been called
   setmetatable({}, {__gc = function () print(3) end})
-  print(collectgarbage() or false)    -- cannot call collector here
+  print(collectgarbage())    -- cannot call collector here
   os.exit(0, true)
 end})
 ]]
@@ -357,7 +322,7 @@ creating 1
 creating 2
 2
 creating 3
-false
+nil
 1
 ]]
 
@@ -370,7 +335,7 @@ checkout("a\n")
 RUN([[lua "-eprint(1)" -ea=3 -e "print(a)" > %s]], out)
 checkout("1\n3\n")
 
--- test interactive mode
+-- test iteractive mode
 prepfile[[
 (6*2-6) -- ===
 a =
@@ -380,8 +345,8 @@ a]]
 RUN([[lua -e"_PROMPT='' _PROMPT2=''" -i < %s > %s]], prog, out)
 checkprogout("6\n10\n10\n\n")
 
-prepfile("a = [[b\nc\nd\ne]]\na")
-RUN([[lua -e"_PROMPT='' _PROMPT2=''" -i -- < %s > %s]], prog, out)
+prepfile("a = [[b\nc\nd\ne]]\n=a")
+RUN([[lua -e"_PROMPT='' _PROMPT2=''" -i < %s > %s]], prog, out)
 checkprogout("b\nc\nd\ne\n\n")
 
 -- input interrupted in continuation line
@@ -408,18 +373,20 @@ assert(string.find(t, prompt .. ".*" .. prompt .. ".*" .. prompt))
 
 
 -- non-string prompt
-prompt = [[
-  local C = 'X';
-   _PROMPT=setmetatable({},{__tostring = function ()
-     C = C .. 'X'; return C end})
-]]
+prompt =
+  "local C = 0;\z
+   _PROMPT=setmetatable({},{__tostring = function () \z
+     C = C + 1; return C end})"
 prepfile[[ --
 a = 2
 ]]
 RUN([[lua -e "%s" -i < %s > %s]], prompt, prog, out)
 local t = getoutput()
--- skip version line and then check the presence of the three prompts
-assert(string.find(t, "^.-\nXX[^\nX]*\n?XXX[^\nX]*\n?XXXX\n?$"))
+assert(string.find(t, [[
+1 --
+2a = 2
+3
+]], 1, true))
 
 
 -- test for error objects
@@ -511,13 +478,12 @@ assert(not os.remove(out))
 -- invalid options
 NoRun("unrecognized option '-h'", "lua -h")
 NoRun("unrecognized option '---'", "lua ---")
-NoRun("unrecognized option '-Ex'", "lua -Ex --")
+NoRun("unrecognized option '-Ex'", "lua -Ex")
 NoRun("unrecognized option '-vv'", "lua -vv")
 NoRun("unrecognized option '-iv'", "lua -iv")
 NoRun("'-e' needs argument", "lua -e")
 NoRun("syntax error", "lua -e a")
 NoRun("'-l' needs argument", "lua -l")
-NoRun("-i", "lua -- -i")   -- handles -i as a script name
 
 
 if T then   -- test library?

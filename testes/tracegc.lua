@@ -1,17 +1,12 @@
 -- track collections
 
-
 local M = {}
 
 -- import list
-local stderr, collectgarbage = io.stderr, collectgarbage
+local setmetatable, stderr, collectgarbage =
+         setmetatable, io.stderr, collectgarbage
 
--- the debug version of setmetatable does not create any object (such as
--- a '__metatable' string), and so it is more appropriate to be used in
--- a finalizer
-local setmetatable = require"debug".setmetatable
-
-global none
+_ENV = nil
 
 local active = false
 

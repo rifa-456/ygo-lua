@@ -1,5 +1,5 @@
 -- $Id: testes/events.lua $
--- See Copyright Notice in file lua.h
+-- See Copyright Notice in file all.lua
 
 print('testing metatables')
 
@@ -248,15 +248,6 @@ end
 test(Op(1), Op(2), Op(3))
 
 
-do  -- test nil as false
-  local x = setmetatable({12}, {__eq= function (a,b)
-    return a[1] == b[1] or nil
-  end})
-  assert(not (x == {20}))
-  assert(x == {12})
-end
-
-
 -- test `partial order'
 
 local function rawSet(x)
@@ -380,7 +371,7 @@ assert(x.val == "0abcdefg")
 
 
 do
-  -- bug since 5.4.1 (test needs T)
+  -- bug since 5.4.1
   local mt = setmetatable({__newindex={}}, {__mode='v'})
   local t = setmetatable({}, mt)
 
@@ -390,16 +381,6 @@ do
   for i=1, 10 do t[i] = 1 end
 end
 
-
-do   -- bug since 5.4
-  local parent = {}
-  parent.__newindex = parent
-  collectgarbage()
-  local child = setmetatable({}, parent)
-  child.__newindex = {x = "hello"}
-  collectgarbage("step")
-  assert(parent.__newindex.x == "hello")
-end
 
 
 -- concat metamethod x numbers (bug in 5.1.1)
@@ -504,7 +485,7 @@ assert(not pcall(function (a,b) return a[b] end, a, 10))
 assert(not pcall(function (a,b,c) a[b] = c end, a, 10, true))
 
 -- bug in 5.1
-local T, K, V = nil
+T, K, V = nil
 grandparent = {}
 grandparent.__newindex = function(t,k,v) T=t; K=k; V=v end
 
