@@ -5,6 +5,7 @@
 *.a
 
 manual/manual.html
+.idea/
 
 testes/time.txt
 testes/time-debug.txt
